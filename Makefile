@@ -5,7 +5,7 @@ CFLAGS += -g
 
 all:do
 
-do:
+do:do.c
 	$(CC) $(CFLAGS) -o do do.c
 
 test:
