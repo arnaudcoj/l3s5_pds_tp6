@@ -3,13 +3,20 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include "makeargv.h"
+#include <errno.h>
+
 
 int main (int argc, char **argv)
 {
   int i;
   pid_t pid ;
   char *args[2];
-  
+  int statusfinal;
+  int status;
+  int or;
+  or = 0;
+  i = 1;
+
   /*
     on vérifie si on a assez d'arguments
   */
@@ -21,6 +28,7 @@ int main (int argc, char **argv)
 
   /*
     on crée le nombre de forks voulus
+    pour chaque fils, on lance une commande
   */
   for(i = 1; i < argc; i++)
     {
@@ -43,9 +51,21 @@ int main (int argc, char **argv)
 	}
     }
 
-  for(i = 1; i < argc; i++)
-    wait(NULL);
+  /*
+    on attend la fin des commandes
+    on stocke les valeurs de retour dans statusfinal en fonction
+     de l'option --and (par défaut) ou --or
+  */
+  wait(&status);
+  statusfinal = WEXITSTATUS(status);
+  for(i = 2; i < argc; i++)
+    {
+      wait(&status);
+      if(or)
+	statusfinal |= WEXITSTATUS(status);
+      else
+	statusfinal &= WEXITSTATUS(status);
+    }
 
-  return EXIT_SUCCESS;
+  return statusfinal;
 }
-
