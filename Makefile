@@ -5,8 +5,11 @@ CFLAGS += -g
 
 all:do
 
-do:do.c
-	$(CC) $(CFLAGS) -o do do.c
+do:do.c makeargv.o
+	$(CC) $(CFLAGS) -o do makeargv.o do.c
+
+makeargv.o:
+	$(CC) -c $(CFLAGS) makeargv.c
 
 test:
 
