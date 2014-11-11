@@ -5,6 +5,8 @@
 #include "makeargv.h"
 #include <errno.h>
 #include <getopt.h>
+#include <sys/types.h>
+#include <signal.h>
 
 enum opts {OR=0, AND=1, CC=2, KILL=4};
 
@@ -181,7 +183,8 @@ int wait_proc_cc(int nbproc, int opts)
 */
 void kill_proc(int remaining_proc)
 {
-  printf("remaning processes : %d\n", remaining_proc);
-  printf("kill_proc : to be implemented\n");
+  int i;
+  for(i = 0; i < remaining_proc; i++)
+    kill(0, SIGINT);
   return;
 }
