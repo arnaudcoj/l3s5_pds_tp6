@@ -12,7 +12,7 @@ makeargv.o:makeargv.c
 	$(CC) -c $(CFLAGS) makeargv.c
 
 test:do
-	./do "xclock" "xclock -d" "xclock -d -brief"
+	./do --or "xclock" "xclock -d" "xclock -d -brief"
 
 clean:
 	rm -rf *.o *~ do
