@@ -119,6 +119,8 @@ int wait_proc(int nbproc, int opts)
   int i;
   int statusfinal;
   int status;
+  if(opts & CC)
+    exit(EXIT_FAILURE);
   wait(&status);
   statusfinal = WEXITSTATUS(status);
   for(i = 0; i < nbproc; i++)
@@ -130,5 +132,33 @@ int wait_proc(int nbproc, int opts)
 	statusfinal |= WEXITSTATUS(status);
     }
 
+  return statusfinal;
+}
+
+int wait_proc_cc(int nbproc, int opts)
+{
+  int i;
+  int statusfinal;
+  int status;
+  if(!(opts & CC))
+    exit(EXIT_FAILURE);
+  wait(&status);
+  statusfinal = WEXITSTATUS(status);
+  if(((opts & AND) && statusfinal) || ((opts & OR) && !statusfinal))
+    {
+      if(opts & KILL)
+	printf("kill a implémenter");/*TODO*/
+      return statusfinal;
+    }
+  for(i = 0; i < nbproc; i++)
+    {
+      wait(&status);
+      if(((opts & AND) && statusfinal) || ((opts & OR) && !statusfinal))
+	{
+	  if(opts & KILL)
+	    printf("kill a implémenter");/*TODO*/
+	  return statusfinal;
+	}
+    }
   return statusfinal;
 }
