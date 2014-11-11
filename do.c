@@ -8,23 +8,21 @@
 
 enum opts {OR=0, AND=1, CC=2, KILL=4};
 
-int getargs(int argc, char **argv);
+int getopts(int argc, char **argv);
 int m_do (int argc, char **argv, int opts);
-void testmakeargv(int argc, char **argv);
+int create_all_forks(int argc, char **argv);
+int wait_proc(int nbproc, int opts);
 
 int main (int argc, char **argv)
 {
   int opts;
-  opts = getargs(argc, argv);
-  /* testmakeargv(argc, argv);*/
+  opts = getopts(argc, argv);
   if(opts == 63)
     exit(EXIT_FAILURE);
-  printf("%d\n", opts);
-  return 0;
-  /*  return m_do(argc, argv, opts);*/
+  return m_do(argc, argv, opts);
 }
 
-int getargs(int argc, char **argv)
+int getopts(int argc, char **argv)
 {
   int val;
   int tmp;
@@ -46,31 +44,13 @@ int getargs(int argc, char **argv)
   return val;
 }
 
-void testmakeargv(int argc, char **argv)
-{
-  char **lol;
-  int nbt, i, j;
-  lol = NULL;
-  for(i = 0; i < argc; i++)
-    {
-      nbt = makeargv(argv[i], " ", &lol);
-      for(j = 0; j < nbt; j++)
-	printf("%d:%s ", j, lol[j]);
-      printf("\n");
-      freeargv(lol);
-    }
-  return;
-}
 
+/**
+   on lance les processus de argv en prenant en compte les options
+*/
 int m_do (int argc, char **argv, int opts)
 {
-  int i;
-  pid_t pid ;
-  char *args[2];
-  int statusfinal;
-  int status;
-  i = 1;
-  pid = 1;
+  int nb_procs;
 
   /*
     on vérifie si on a assez d'arguments
@@ -81,40 +61,67 @@ int m_do (int argc, char **argv, int opts)
       exit(EXIT_FAILURE);
     }
 
-  /*
-    on crée le nombre de forks voulus
-    pour chaque fils, on lance une commande
-  */
+  nb_procs = create_all_forks(argc, argv);
+
+  return wait_proc(nb_procs, opts);
+}
+
+
+/**
+   on crée le nombre de forks voulus
+   pour chaque fils, on lance une commande
+   @return le nombre de fils lancés
+*/
+int create_all_forks(int argc, char **argv)
+{
+  int i, nb_procs;
+  pid_t pid;
+  char **args;
+  nb_procs = 0;
+  pid = 1;
+  args = NULL;
   for(i = 1; i < argc; i++)
     {
-      args[0] = argv[i];
-      args[1] = NULL;
-      if(pid != 0)
+      /* si fils on sort de la boucle */
+      if(pid == 0)
+	break;
+
+      if(argv[i][0] != '-')
 	{
-	  pid = fork();
-	  switch(pid)
+	  nb_procs++;
+	  makeargv(argv[i], " ", &args);
+
+	  switch(pid = fork())
 	    {
 	    case -1: /* erreur */
 	      perror("erreur fork");
 	      exit(EXIT_FAILURE);
 	    case 0: /* fils : execute une commande */
-	      printf("exec : %s\n", args[0]);
-	      execvp(argv[i], args);
+	      execvp(args[0], args);
 	      break;
 	    default:
 	      break;
 	    }
+
+	  freeargv(args);
 	}
     }
+  return nb_procs;
+}
 
-  /*
-    on attend la fin des commandes
-    on stocke les valeurs de retour dans statusfinal en fonction
-     de l'option --and (par défaut) ou --or
-  */
+/**
+   on attend la fin des commandes
+   on stocke les valeurs de retour dans statusfinal en fonction
+   de l'option --and (par défaut) ou --or
+*/
+int wait_proc(int nbproc, int opts)
+{
+  int i;
+  int statusfinal;
+  int status;
   wait(&status);
   statusfinal = WEXITSTATUS(status);
-  for(i = 2; i < argc; i++)
+  for(i = 0; i < nbproc; i++)
     {
       wait(&status);
       if(opts & AND)

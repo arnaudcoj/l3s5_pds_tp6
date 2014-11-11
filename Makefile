@@ -8,10 +8,11 @@ all:do
 do:do.c makeargv.o
 	$(CC) $(CFLAGS) -o do makeargv.o do.c
 
-makeargv.o:
+makeargv.o:makeargv.c
 	$(CC) -c $(CFLAGS) makeargv.c
 
-test:
+test:do
+	./do "xclock" "xclock -d" "xclock -d -brief"
 
 clean:
 	rm -rf *.o *~ do
