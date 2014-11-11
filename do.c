@@ -12,6 +12,8 @@ int getopts(int argc, char **argv);
 int m_do (int argc, char **argv, int opts);
 int create_all_forks(int argc, char **argv);
 int wait_proc(int nbproc, int opts);
+int wait_proc_cc(int nbproc, int opts);
+void kill_proc(int remaining_proc);
 
 int main (int argc, char **argv)
 {
@@ -63,7 +65,10 @@ int m_do (int argc, char **argv, int opts)
 
   nb_procs = create_all_forks(argc, argv);
 
-  return wait_proc(nb_procs, opts);
+  if(opts & CC)
+    return wait_proc_cc(nb_procs, opts);
+  else
+    return wait_proc(nb_procs, opts);
 }
 
 
@@ -123,7 +128,7 @@ int wait_proc(int nbproc, int opts)
     exit(EXIT_FAILURE);
   wait(&status);
   statusfinal = WEXITSTATUS(status);
-  for(i = 0; i < nbproc; i++)
+  for(i = 1; i < nbproc; i++)
     {
       wait(&status);
       if(opts & AND)
@@ -135,30 +140,48 @@ int wait_proc(int nbproc, int opts)
   return statusfinal;
 }
 
+
+/**
+   lancée quand l'option -cc est demandée
+   on attend la fin des commandes exécutées.
+   Dès qu’une des commandes retourne un succès pour l’option
+   --or, ou retourne un échec pour l’option --and, on retourne
+   cette valeur sans attendre les prochains processus.
+*/
 int wait_proc_cc(int nbproc, int opts)
 {
   int i;
-  int statusfinal;
+  int res;
   int status;
   if(!(opts & CC))
     exit(EXIT_FAILURE);
-  wait(&status);
-  statusfinal = WEXITSTATUS(status);
-  if(((opts & AND) && statusfinal) || ((opts & OR) && !statusfinal))
-    {
-      if(opts & KILL)
-	printf("kill a implémenter");/*TODO*/
-      return statusfinal;
-    }
   for(i = 0; i < nbproc; i++)
     {
       wait(&status);
-      if(((opts & AND) && statusfinal) || ((opts & OR) && !statusfinal))
+      res = WEXITSTATUS(status);
+      if(((opts & AND) && res) || (!(opts & AND) && res == 0))
 	{
 	  if(opts & KILL)
-	    printf("kill a implémenter");/*TODO*/
-	  return statusfinal;
+	    kill_proc(nbproc - i);
+	  return res;
 	}
     }
-  return statusfinal;
+  /*
+    pas la peine de vérifier le dernier res.
+    Si on arrive jusqu'ici, c'est que les précédents processus n'ont pas
+    retourné la valeur court-circuit, le dernier processus définit donc
+    le message de retour et n'a pas de processus en attente à tuer.
+  */
+  return res;
+}
+
+/**
+   Tue tous les processus restants
+   @param remaining_proc le nombre de processus à tuer
+*/
+void kill_proc(int remaining_proc)
+{
+  printf("remaning processes : %d\n", remaining_proc);
+  printf("kill_proc : to be implemented\n");
+  return;
 }
