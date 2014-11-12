@@ -11,8 +11,9 @@ do:do.c makeargv.o
 makeargv.o:makeargv.c
 	$(CC) -c $(CFLAGS) makeargv.c
 
-test:do
-	./do --or "xclock" "xclock -d" "xclock -d -brief"
+test:do test.sh
+	chmod +x test.sh
+	./test.sh
 
 clean:
 	rm -rf *.o *~ do
