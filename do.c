@@ -12,10 +12,10 @@ enum opts {OR=0, AND=1, CC=2, KILL=4};
 
 int getopts(int argc, char **argv);
 int m_do (int argc, char **argv, int opts);
-int create_all_forks(int argc, char **argv);
-int wait_proc(int nbproc, int opts);
-int wait_proc_cc(int nbproc, int opts);
-void kill_proc(int remaining_proc);
+void create_all_forks(int argc, char **argv, pid_t *processes);
+int wait_proc(int opts, pid_t *processes);
+int wait_proc_cc(int opts, pid_t *processes);
+void kill_proc(pid_t *processes);
 
 int main (int argc, char **argv)
 {
@@ -54,7 +54,10 @@ int getopts(int argc, char **argv)
 */
 int m_do (int argc, char **argv, int opts)
 {
-  int nb_procs;
+  pid_t *processes;
+  int res;
+  processes = malloc(sizeof(pid_t)*(argc+1));
+  processes[argc] = 0;  
 
   /*
     on vérifie si on a assez d'arguments
@@ -65,26 +68,30 @@ int m_do (int argc, char **argv, int opts)
       exit(EXIT_FAILURE);
     }
 
-  nb_procs = create_all_forks(argc, argv);
+  create_all_forks(argc, argv, processes);
 
   if(opts & CC)
-    return wait_proc_cc(nb_procs, opts);
+    res = wait_proc_cc(opts, processes);
   else
-    return wait_proc(nb_procs, opts);
+    res = wait_proc(opts, processes);
+  free(processes);
+  return res;
 }
 
 
 /**
    on crée le nombre de forks voulus
    pour chaque fils, on lance une commande
-   @return le nombre de fils lancés
+   les pids des fils sont stockés dans processes
+   on les stocke dans l'ordre décroissant car getopts 'range' les paramètres
+   au début de argv, de cette façon, on met des 0 à la fin du tableau pour
+   wait/kill les processus voulus et savoir quand il n'y en a plus.
 */
-int create_all_forks(int argc, char **argv)
+void create_all_forks(int argc, char **argv, pid_t *processes)
 {
-  int i, nb_procs;
+  int i;
   pid_t pid;
   char **args;
-  nb_procs = 0;
   pid = 1;
   args = NULL;
   for(i = 1; i < argc; i++)
@@ -95,7 +102,6 @@ int create_all_forks(int argc, char **argv)
 
       if(argv[i][0] != '-')
 	{
-	  nb_procs++;
 	  makeargv(argv[i], " ", &args);
 
 	  switch(pid = fork())
@@ -107,13 +113,16 @@ int create_all_forks(int argc, char **argv)
 	      execvp(args[0], args);
 	      break;
 	    default:
+	      processes[argc - i -1] = pid; 
 	      break;
 	    }
 
 	  freeargv(args);
 	}
+      else
+	  processes[argc - i - 1] = 0;
     }
-  return nb_procs;
+  return;
 }
 
 /**
@@ -121,22 +130,24 @@ int create_all_forks(int argc, char **argv)
    on stocke les valeurs de retour dans statusfinal en fonction
    de l'option --and (par défaut) ou --or
 */
-int wait_proc(int nbproc, int opts)
+int wait_proc(int opts, pid_t *processes)
 {
   int i;
   int statusfinal;
   int status;
+  i = 0;
   if(opts & CC)
     exit(EXIT_FAILURE);
   wait(&status);
   statusfinal = WEXITSTATUS(status);
-  for(i = 1; i < nbproc; i++)
+  while(processes[i])
     {
       wait(&status);
       if(opts & AND)
 	statusfinal &= WEXITSTATUS(status);
       else
 	statusfinal |= WEXITSTATUS(status);
+      i++;
     }
 
   return statusfinal;
@@ -150,23 +161,25 @@ int wait_proc(int nbproc, int opts)
    --or, ou retourne un échec pour l’option --and, on retourne
    cette valeur sans attendre les prochains processus.
 */
-int wait_proc_cc(int nbproc, int opts)
+int wait_proc_cc(int opts, pid_t *processes)
 {
   int i;
   int res;
   int status;
+  i = 0;
   if(!(opts & CC))
     exit(EXIT_FAILURE);
-  for(i = 0; i < nbproc; i++)
+  while(processes[i])
     {
       wait(&status);
       res = WEXITSTATUS(status);
       if(((opts & AND) && res) || (!(opts & AND) && res == 0))
 	{
 	  if(opts & KILL)
-	    kill_proc(nbproc - i);
+	    kill_proc(processes);
 	  return res;
 	}
+      i++;
     }
   /*
     pas la peine de vérifier le dernier res.
@@ -181,10 +194,11 @@ int wait_proc_cc(int nbproc, int opts)
    Tue tous les processus restants
    @param remaining_proc le nombre de processus à tuer
 */
-void kill_proc(int remaining_proc)
+void kill_proc(pid_t *processes)
 {
   int i;
-  for(i = 0; i < remaining_proc; i++)
-    kill(0, SIGINT);
+  i = 0;
+  while(processes[i])
+    kill(processes[i++], SIGINT);
   return;
 }
