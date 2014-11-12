@@ -1,0 +1,11 @@
+TP6 PDS : Mutation de Processus
+===============================
+
+Auteurs : Cojez Arnaud et Caron Matthieu
+Date de création : Jeudi 6 Novembre
+Derniere modification : Mercredi 12 Novembre
+
+Pour lancer les tests :
+    $ make test 
+
+Merci de votre attention !
