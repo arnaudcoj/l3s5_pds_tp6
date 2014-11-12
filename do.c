@@ -1,3 +1,8 @@
+/*
+  Auteurs : Cojez Arnaud et Caron Matthieu
+  Date de création : Jeudi 6 Novembre
+  Derniere modification : Mercredi 12 Novembre
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -26,6 +31,10 @@ int main (int argc, char **argv)
   return m_do(argc, argv, opts);
 }
 
+/**
+   Analyse les options données en paramètres et modifie la
+   valeur de retour en conséquence
+*/
 int getopts(int argc, char **argv)
 {
   int val;
@@ -50,7 +59,7 @@ int getopts(int argc, char **argv)
 
 
 /**
-   on lance les processus de argv en prenant en compte les options
+   Lance les processus de argv en prenant en compte les options
 */
 int m_do (int argc, char **argv, int opts)
 {
@@ -80,12 +89,11 @@ int m_do (int argc, char **argv, int opts)
 
 
 /**
-   on crée le nombre de forks voulus
-   pour chaque fils, on lance une commande
-   les pids des fils sont stockés dans processes
-   on les stocke dans l'ordre décroissant car getopts 'range' les paramètres
-   au début de argv, de cette façon, on met des 0 à la fin du tableau pour
-   wait/kill les processus voulus et savoir quand il n'y en a plus.
+   Crée le nombre de forks demandés, puis pour chaque fils, lance une commande.
+   Les pids des fils sont stockés dans processes.
+   On les stocke dans l'ordre décroissant car getopt() place les paramètres
+   au début du tableau argv, de cette façon, on met des 0 à la fin du tableau
+   pour wait/kill les processus voulus et savoir quand il n'y en a plus.
 */
 void create_all_forks(int argc, char **argv, pid_t *processes)
 {
@@ -96,8 +104,7 @@ void create_all_forks(int argc, char **argv, pid_t *processes)
   args = NULL;
   for(i = 1; i < argc; i++)
     {
-      /* si fils on sort de la boucle */
-      if(pid == 0)
+      if(pid == 0) /* fils : on sort de la boucle */
 	break;
 
       if(argv[i][0] != '-')
@@ -113,6 +120,7 @@ void create_all_forks(int argc, char **argv, pid_t *processes)
 	      execvp(args[0], args);
 	      break;
 	    default:
+	      /* père : on stocke le pid dans le tableau */
 	      processes[argc - i -1] = pid; 
 	      break;
 	    }
@@ -120,15 +128,15 @@ void create_all_forks(int argc, char **argv, pid_t *processes)
 	  freeargv(args);
 	}
       else
+	/* argv[i] est une option, on stocke la valeur 0 dans le tableau */
 	  processes[argc - i - 1] = 0;
     }
   return;
 }
 
 /**
-   on attend la fin des commandes
-   on stocke les valeurs de retour dans statusfinal en fonction
-   de l'option --and (par défaut) ou --or
+   Attend la fin des commandes et stocke les valeurs de retour dans statusfinal
+   en fonction de l'option --and (par défaut) ou --or
 */
 int wait_proc(int opts, pid_t *processes)
 {
@@ -155,11 +163,13 @@ int wait_proc(int opts, pid_t *processes)
 
 
 /**
-   lancée quand l'option -cc est demandée
-   on attend la fin des commandes exécutées.
-   Dès qu’une des commandes retourne un succès pour l’option
-   --or, ou retourne un échec pour l’option --and, on retourne
-   cette valeur sans attendre les prochains processus.
+   Lancée quand l'option --cc est donnée.
+   Attend la fin des commandes exécutées.
+   Dès qu’une des commandes retourne un succès pour l’option --or, ou retourne
+   un échec pour l’option --and, on retourne cette valeur sans attendre les
+   prochains processus.
+   Si l'option --kill est donnée également, on lance kill_proc et on retourne
+   la dernière valeur de retour connue.
 */
 int wait_proc_cc(int opts, pid_t *processes)
 {
@@ -191,8 +201,7 @@ int wait_proc_cc(int opts, pid_t *processes)
 }
 
 /**
-   Tue tous les processus restants
-   @param remaining_proc le nombre de processus à tuer
+   Tue tous les processus restants (dont le pid est stocké dans processes)
 */
 void kill_proc(pid_t *processes)
 {
