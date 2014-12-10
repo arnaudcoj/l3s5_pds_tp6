@@ -183,7 +183,7 @@ int wait_proc_cc(int opts, pid_t *processes)
     {
       wait(&status);
       res = WEXITSTATUS(status);
-      if(((opts & AND) && res) || (!(opts & AND) && res == 0))
+      if(((opts & AND) && res) || (!(opts & AND) && !res))
 	{
 	  if(opts & KILL)
 	    kill_proc(processes);
